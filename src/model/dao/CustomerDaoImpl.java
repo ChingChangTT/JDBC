@@ -5,133 +5,147 @@ import model.entity.Customer;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class CustomerDaoImpl implements CustomerDao {
-    private static final String URL = "jdbc:postgresql://localhost:5432/postgres";
-    private static final String USER = "postgres";
-    private static final String PASSWORD = "keoratana13$";
+    final String url = "jdbc:postgresql://localhost:5432/postgres";
+    final String user = "postgres";
+    final String password = "keoratana13$";
 
-    private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
+    @Override
+    public Connection connectionToDataBase() throws SQLException {
+        return DriverManager.getConnection(
+                url,
+                user,
+                password
+        );
     }
 
     @Override
-    public int addCustomer(Customer customer) {
-        String sql = "INSERT INTO customers (name, email, password, is_deleted, create_date) VALUES (?, ?, ?, ?, ?)";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-            ps.setString(1, customer.getName());
-            ps.setString(2, customer.getEmail());
-            ps.setString(3, customer.getPassword());
-            ps.setBoolean(4, customer.getIsDeleted());
-            ps.setTimestamp(5, new Timestamp(customer.getCreateDate().getTime()));
-
-            int rowsInserted = ps.executeUpdate();
-
-            if (rowsInserted > 0) {
-                try (ResultSet rs = ps.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        customer.setId(rs.getInt(1));
-                    }
-                }
+    public Customer searchCustomerById(Integer id) {
+        String sql = """
+                SELECT * FROM "customer" WHERE id = ?
+                """;
+        try(
+                Connection connection = connectionToDataBase();
+                PreparedStatement pre = connection.prepareStatement(sql);
+        ){
+            pre.setInt(1, id);
+            ResultSet resultSet = pre.executeQuery();
+            Customer customer = null;
+            while (resultSet.next()) {
+                customer = Customer
+                        .builder()
+                        .id(resultSet.getInt("id"))
+                        .name(resultSet.getString("name"))
+                        .email(resultSet.getString("email"))
+                        .password(resultSet.getString("password"))
+                        .is_deleted(resultSet.getBoolean("is_deleted"))
+                        .build();
             }
-
-            return rowsInserted;
-        } catch (SQLException e) {
-            System.out.println("Error adding customer: " + e.getMessage());
-            return -1;
-        }
-    }
-
-    @Override
-    public int updateCustomer(Customer customer) {
-        String sql = "UPDATE customers SET name = ?, email = ?, password = ?, is_deleted = ?, create_date = ? WHERE id = ?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-
-            ps.setString(1, customer.getName());
-            ps.setString(2, customer.getEmail());
-            ps.setString(3, customer.getPassword());
-            ps.setBoolean(4, customer.getIsDeleted());
-            ps.setTimestamp(5, new Timestamp(customer.getCreateDate().getTime()));
-            ps.setInt(6, customer.getId());
-
-            return ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error updating customer: " + e.getMessage());
-            return -1;
-        }
-    }
-
-    @Override
-    public void deleteCustomer(int customerId) {
-        String sql = "DELETE FROM customers WHERE id = ?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, customerId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error deleting customer: " + e.getMessage());
-        }
-    }
-
-    @Override
-    public Customer getCustomerById(int customerId) {
-        String sql = "SELECT * FROM customers WHERE id = ?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, customerId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return new Customer(
-                            rs.getInt("id"),
-                            rs.getString("name"),
-                            rs.getString("email"),
-                            rs.getString("password"),
-                            rs.getBoolean("is_deleted"),
-                            rs.getTimestamp("create_date")
-                    );
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("Error getting customer by id: " + e.getMessage());
+            return customer;
+        }catch (SQLException sqlException) {
+            System.out.println(sqlException.getMessage());
         }
         return null;
     }
 
     @Override
-    public List<Customer> getAllCustomers() {
-        List<Customer> customers = new ArrayList<>();
-        String sql = "SELECT * FROM customers";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
+    public List<Customer> queryAllCustomers() {
+        String sql = """
+                SELECT * FROM "customer"
+                """;
+        try(
+                Connection connection = connectionToDataBase();
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(sql)
+                ){
+            List<Customer> customers = new ArrayList<>();
+            while (resultSet.next()) {
                 customers.add(new Customer(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("email"),
-                        rs.getString("password"),
-                        rs.getBoolean("is_deleted"),
-                        rs.getTimestamp("create_date")
+                        resultSet.getInt("id"),
+                        resultSet.getString("name"),
+                        resultSet.getString("email"),
+                        resultSet.getString("password"),
+                        resultSet.getBoolean("is_deleted"),
+                        resultSet.getDate("created_date"),
+                        resultSet.getString("bio")
                 ));
             }
-        } catch (SQLException e) {
-            System.out.println("Error getting all customers: " + e.getMessage());
+            return customers;
+        }catch (SQLException sqlException){
+            System.out.println(sqlException.getMessage());
         }
-        return customers;
+        return new ArrayList<>();
     }
 
     @Override
-    public void clearAllCustomers() {
-        String sql = "DELETE FROM customers";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error clearing all customers: " + e.getMessage());
+    public int deleteCustomerById(Integer id) {
+        String sql = """
+                DELETE FROM "customer" WHERE id = ?
+                """;
+        try(
+                Connection connection = connectionToDataBase();
+                PreparedStatement pre = connection.prepareStatement(sql)
+                ){
+            pre.setInt(1, id);
+            return pre.executeUpdate();
+        }catch (SQLException sqlException){
+            System.out.println(sqlException.getMessage());
         }
+        return 0;
+    }
+
+    @Override
+    public int updateCustomerById(Integer id) {
+        String sql = """
+                UPDATE "customer" SET name = ?, email = ?, password = ?, bio = ? WHERE id = ?
+                """;
+        try(
+                Connection connection = connectionToDataBase();
+                PreparedStatement pre = connection.prepareStatement(sql);
+                ){
+            Customer customer = searchCustomerById(id);
+            if (customer == null) {
+                System.out.println("No customer");
+            }else{
+                System.out.print("New Name:");
+                pre.setString(1,new Scanner(System.in).nextLine());
+                System.out.print("New Email:");
+                pre.setString(2,new Scanner(System.in).nextLine());
+                System.out.print("New Password:");
+                pre.setString(3,new Scanner(System.in).nextLine());
+                System.out.print("New Bio:");
+                pre.setString(4,new Scanner(System.in).nextLine());
+                pre.setInt(5,id);
+                return pre.executeUpdate();
+            }
+        }catch (SQLException sqlException){
+            System.out.println(sqlException.getMessage());
+        }
+        return 0;
+    }
+
+    @Override
+    public int addNewCustomer(Customer customer) {
+        String sql = """
+                INSERT INTO customer (name, email, password, is_deleted, created_date, bio)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """;
+        try(
+                Connection connection = connectionToDataBase();
+                PreparedStatement pre = connection.prepareStatement(sql)
+        ){
+            pre.setString(1, customer.getName());
+            pre.setString(2, customer.getEmail());
+            pre.setString(3, customer.getPassword());
+            pre.setBoolean(4, customer.getIs_deleted());
+            pre.setDate(5, customer.getCreated_date());
+            pre.setString(6, customer.getBio());
+            return pre.executeUpdate();
+        }catch (SQLException sqlException){
+            System.out.println(sqlException.getMessage());
+        }
+        return 0;
     }
 }

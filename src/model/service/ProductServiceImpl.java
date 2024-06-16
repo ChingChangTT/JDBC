@@ -1,74 +1,68 @@
 package model.service;
 
+import excaption.ExceptionHandling;
+import mapper.ProductMapper;
 import model.dao.ProductDao;
 import model.dao.ProductDaoImpl;
 import model.dto.ProductDto;
 import model.entity.Product;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ProductServiceImpl implements ProductService {
-    private final ProductDao productDao;
-
-    public ProductServiceImpl() {
-        this.productDao = new ProductDaoImpl();
-    }
+    private final ProductDao productDao = new ProductDaoImpl();
 
     @Override
-    public boolean addProduct(ProductDto productDto) {
-        Product product = Product.builder()
-                .productName(productDto.getProductName())
-                .productCode(productDto.getProductCode())
-                .productDescription(productDto.getProductDescription())
-                .build();
-        return productDao.addProduct(product) > 0;
-    }
-
-    @Override
-    public boolean updateProduct(ProductDto productDto) {
-        Product product = Product.builder()
-                .id(productDto.getId())
-                .productName(productDto.getProductName())
-                .productCode(productDto.getProductCode())
-                .productDescription(productDto.getProductDescription())
-                .build();
-        return productDao.updateProduct(product) > 0;
-    }
-
-    @Override
-    public boolean deleteProduct(int productId) {
-        productDao.deleteProduct(productId);
-        return true;
-    }
-
-    @Override
-    public ProductDto getProductById(int productId) {
-        Product product = productDao.getProductById(productId);
-        if (product != null) {
-            return ProductDto.builder()
-                    .id(product.getId())
-                    .productName(product.getProductName())
-                    .productCode(product.getProductCode())
-                    .productDescription(product.getProductDescription())
-                    .build();
+    public List<ProductDto> queryAllProducts() {
+        try {
+            List<Product> products = productDao.queryAllProducts();
+            if (!(products.isEmpty())) {
+                return productDao.queryAllProducts().stream().map(ProductMapper::mapProductToProductDto).toList();
+            }else {
+                throw new ExceptionHandling("No Data !");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
         }
         return null;
     }
 
     @Override
-    public List<ProductDto> getAllProducts() {
-        List<Product> products = productDao.getAllProducts();
-        return products.stream().map(product -> ProductDto.builder()
-                .id(product.getId())
-                .productName(product.getProductName())
-                .productCode(product.getProductCode())
-                .productDescription(product.getProductDescription())
-                .build()).collect(Collectors.toList());
+    public void addNewProduct(Product product) {
+        try {
+            if (productDao.addNewProduct(product) > 0) {
+                throw new ExceptionHandling("Product Added Successfully !");
+            }else {
+                throw new ExceptionHandling("Cant add product !");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
     }
 
     @Override
-    public void clearAllProducts() {
-        productDao.clearAllProducts();
+    public void updateProductById(Integer id) {
+        try{
+            if (productDao.updateProduct(id)>0){
+                throw new ExceptionHandling("Product Updated Successfully !");
+            }else {
+                throw new ExceptionHandling("Cant update product !");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteProductById(Integer id) {
+        try{
+            if (productDao.deleteProduct(id)>0){
+                throw new ExceptionHandling("Product Deleted Successfully !");
+            }else {
+                throw new ExceptionHandling("Cant delete product !");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
     }
 }

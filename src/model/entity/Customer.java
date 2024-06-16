@@ -5,16 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
+import java.sql.Date;
+
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class Customer {
     private Integer id;
-    private  String name;
+    private String name;
     private String email;
     private String password;
-    private Boolean isDeleted;
-    private Date CreateDate;
+    private Boolean is_deleted;
+    private Date created_date;
+    private String bio;
 }

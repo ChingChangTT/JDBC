@@ -5,20 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
+import java.sql.Date;
+import java.util.List;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class Order {
     private Integer id;
-    private String order_name;
-    private  String orderDescription;
-    private Date orderdAt;
+    private String orderName;
+    private String orderDescription;
     private Customer customer;
-
-    public void setCustomer() {
-
-    }
+    private List<Product> productList;
+    private Date orderAt;
 }

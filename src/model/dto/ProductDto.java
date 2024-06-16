@@ -1,17 +1,15 @@
 package model.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+import java.sql.Date;
+
 @Builder
-public class ProductDto {
-    private Integer id;
-    private String productName;
-    private String productCode;
-    private String productDescription;
+public record ProductDto(
+        Integer id,
+        String productName,
+        Date importDate,
+        Date expiredDate,
+        String productDescription
+) {
 }

@@ -5,18 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
+import java.sql.Date;
+
 @Data
-@Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Product {
     private Integer id;
     private String productName;
-    private  String productCode;
-    private boolean isDeleted;
+    private String prodcutCode;
+    private Boolean isDeleted;
     private Date importedDate;
-    private Date expireDate;
-    private  String productDescription;
-
+    private Date expiredDate;
+    private String productDescription;
 }

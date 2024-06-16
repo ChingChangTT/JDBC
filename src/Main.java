@@ -10,27 +10,27 @@ public class Main {
 
         while (true) {
             System.out.println("Choose an option:");
-            System.out.println("1. Product Management");
+            System.out.println("1.Customer  Management");
             System.out.println("2. Order Management");
-            System.out.println("3. Customer Management");
+            System.out.println("3.Product  Management");
             System.out.println("4. Exit...");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
-            scanner.nextLine(); // Consume newline
+            scanner.nextLine();
 
             switch (choice) {
                 case 1:
-                    ProductView productView = new ProductView();
-                    productView.displayMenu();
+                    CustomerView cus = new CustomerView();
+                    cus.showMenu();
                     break;
                 case 2:
-                    OrderView orderView = new OrderView();
-                    orderView.displayMenu();
+                    OrderView order = new OrderView();
+                    order.showMenu();
                     break;
                 case 3:
-                    CustomerView customerView = new CustomerView();
-                    customerView.displayMenu();
+                    ProductView pro= new ProductView();
+                    pro.showMenu();
                     break;
                 case 4:
                     System.out.println("Exiting...");

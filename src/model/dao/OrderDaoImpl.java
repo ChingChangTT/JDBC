@@ -2,164 +2,163 @@ package model.dao;
 
 import model.entity.Customer;
 import model.entity.Order;
+import model.entity.Product;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
-public class OrderDaoImpl implements OrderDao {
-    private static final String URL = "jdbc:postgresql://localhost:5432/postgres";
-    private static final String USER = "postgres";
-    private static final String PASSWORD = "keoratana13$";
-
-    private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
-    }
+public class OrderDaoImpl implements OrderDao{
+    private final CustomerDao customerDao = new CustomerDaoImpl();
 
     @Override
-    public int addOrder(Order order) {
-        String sql = "INSERT INTO order (id,order_name, order_description, cus_id,ordered_at) VALUES (?,?,?,?,?)";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            Customer customer = order.getCustomer();
-            if (customer == null || customer.getId() == null) {
-                throw new IllegalArgumentException("Customer or Customer ID cannot be null");
+    public int addNewOrder(Order order) {
+        String sql = """
+                INSERT INTO "order" (order_name, order_description, cus_id, ordered_at)
+                VALUES (?, ?, ?, ?)
+                """;
+        String sql1 = """
+                INSERT INTO "product_order" (pro_id, order_id)
+                VALUES (?,?)
+                """;
+        try(
+                Connection connection = customerDao.connectionToDataBase();
+                PreparedStatement pre = connection.prepareStatement(sql);
+                PreparedStatement pre1 = connection.prepareStatement(sql1)
+        ){
+            pre.setString(1, order.getOrderName());
+            pre.setString(2, order.getOrderDescription());
+            pre.setInt(3, order.getCustomer().getId());
+            pre.setDate(4,order.getOrderAt());
+            for(Product product : order.getProductList()){
+                pre1.setInt(1, product.getId());
+                pre1.setInt(2, order.getId());
             }
+            int rowAffected = pre.executeUpdate();
+            pre1.executeUpdate();
+            return rowAffected;
+        }catch (SQLException sqlException){
+            System.out.println(sqlException.getMessage());
+        }
+        return 0;
+    }
 
-            ps.setString(1, order.getOrder_name());
-            ps.setString(2, order.getOrderDescription());
-            ps.setTimestamp(3, new Timestamp(order.getOrderdAt().getTime()));
-            ps.setInt(4, customer.getId());
-
-            int rowsInserted = ps.executeUpdate();
-
-            if (rowsInserted > 0) {
-                try (ResultSet rs = ps.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        order.setId(rs.getInt(1));
-                    }
-                }
+    @Override
+    public int updateOrder(Integer id) {
+        String sql = """
+                UPDATE "order" SET order_name = ?, order_description = ? WHERE id = ?
+                """;
+        try(
+                Connection connection = customerDao.connectionToDataBase();
+                PreparedStatement pre = connection.prepareStatement(sql);
+        ){
+            Order order = searchOrderById(id);
+            if (order == null) {
+                System.out.println("No customer");
+            }else{
+                System.out.print("New Order Name:");
+                pre.setString(1,new Scanner(System.in).nextLine());
+                System.out.print("New Order Description:");
+                pre.setString(2,new Scanner(System.in).nextLine());
+                pre.setInt(3,id);
+                return pre.executeUpdate();
             }
-
-            return rowsInserted;
-        } catch (SQLException e) {
-            System.out.println("Error adding order: " + e.getMessage());
-            return -1;
+        }catch (SQLException sqlException){
+            System.out.println(sqlException.getMessage());
         }
-
+        return 0;
     }
 
     @Override
-    public int updateOrder(Order order) {
-        String sql = "UPDATE order SET order_name=?, order_description=?, ordered_at=?, customer_id=? WHERE id=?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-
-            ps.setString(1, order.getOrder_name());
-            ps.setString(2, order.getOrderDescription());
-            ps.setTimestamp(3, new Timestamp(order.getOrderdAt().getTime()));
-            ps.setInt(4, order.getCustomer().getId());
-            ps.setInt(5, order.getId());
-
-            return ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error updating order: " + e.getMessage());
-            return -1;
-        }
-    }
-
-    @Override
-    public void deleteOrder(int orderId) {
-        String sql = "DELETE FROM order WHERE id=?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, orderId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error deleting order: " + e.getMessage());
-        }
-    }
-
-    @Override
-    public Order getOrderById(int orderId) {
-        String sql = "SELECT * FROM order WHERE id=?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, orderId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Customer customer = getCustomerById(rs.getInt("customer_id"));
-                    return new Order(
-                            rs.getInt("id"),
-                            rs.getString("order_name"),
-                            rs.getString("order_description"),
-                            rs.getTimestamp("ordered_at"),
-                            customer
-                    );
-                }
+    public int deleteOrderById(Integer id) {
+        String sql = """
+                DELETE FROM "order" WHERE id = ?
+                """;
+        try(
+                Connection connection = customerDao.connectionToDataBase();
+                PreparedStatement pre = connection.prepareStatement(sql)
+        ){
+            Order order = searchOrderById(id);
+            String msg = order == null ? "Cannot find oder" : "Found Order";
+            System.out.println(msg);
+            if(order != null) {
+                pre.setInt(1,id);
+                return pre.executeUpdate();
             }
-        } catch (SQLException e) {
-            System.out.println("Error getting order by id: " + e.getMessage());
+        }catch (SQLException sqlException){
+            System.out.println(sqlException.getMessage());
         }
-        return null;
+        return 0;
     }
 
     @Override
-    public List<Order> getAllOrders() {
-        List<Order> orders = new ArrayList<>();
-        String sql = "SELECT * FROM order";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                Customer customer = getCustomerById(rs.getInt("customer_id"));
-                orders.add(new Order(
-                        rs.getInt("id"),
-                        rs.getString("order_name"),
-                        rs.getString("order_description"),
-                        rs.getTimestamp("ordered_at"),
-                        customer
-                ));
+    public List<Order> queryAllOrders() {
+        String sql = """
+                SELECT * FROM "order"
+                INNER JOIN public.customer c on c.id = "order".cus_id
+                """;
+        try (
+                Connection connection = customerDao.connectionToDataBase();
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(sql)
+        ) {
+            List<Order> orders = new ArrayList<>();
+            while (resultSet.next()) {
+                orders.add(Order
+                        .builder()
+                        .id(resultSet.getInt("id"))
+                        .orderName(resultSet.getString("order_name"))
+                        .orderDescription(resultSet.getString("order_description"))
+                        .orderAt(resultSet.getDate("ordered_at"))
+                        .customer(Customer
+                                .builder()
+                                .id(resultSet.getInt("cus_id"))
+                                .name(resultSet.getString("name"))
+                                .email(resultSet.getString("email"))
+                                .password(resultSet.getString("password"))
+                                .is_deleted(resultSet.getBoolean("is_deleted"))
+                                .created_date(resultSet.getDate("created_date"))
+                                .bio(resultSet.getString("bio"))
+                                .build())
+                        .build()
+                );
             }
-        } catch (SQLException e) {
-            System.out.println("Error getting all orders: " + e.getMessage());
+            return orders;
+        } catch (SQLException sqlException) {
+            System.out.println(sqlException.getMessage());
         }
-        return orders;
+        return new ArrayList<>();
     }
 
     @Override
-    public void clearAllOrders() {
-        String sql = "DELETE FROM order";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error clearing all orders: " + e.getMessage());
-        }
-    }
-
-    private Customer getCustomerById(int customerId) {
-        String sql = "SELECT * FROM customer WHERE id=?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, customerId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return new Customer(
-                            rs.getInt("id"),
-                            rs.getString("name"),
-                            rs.getString("email"),
-                            rs.getString("password"),
-                            rs.getBoolean("is_deleted"),
-                            rs.getTimestamp("created_date")
-                    );
-                } else {
-                    System.out.println("No customer found with ID: " + customerId);
-                }
+    public Order searchOrderById(Integer id) {
+        String sql = """
+                SELECT * FROM "order" WHERE id = ?
+                """;
+        try(
+                Connection connection = customerDao.connectionToDataBase();
+                PreparedStatement pre = connection.prepareStatement(sql);
+        ){
+            pre.setInt(1, id);
+            ResultSet resultSet = pre.executeQuery();
+            Order order = null;
+            while (resultSet.next()) {
+                order = Order
+                        .builder()
+                        .id(resultSet.getInt("id"))
+                        .orderName(resultSet.getString("order_name"))
+                        .orderDescription(resultSet.getString("order_description"))
+                        .customer(Customer.builder()
+                                .id(resultSet.getInt("cus_id"))
+                                .build())
+                        .productList(new ArrayList<>())
+                        .orderAt(resultSet.getDate("ordered_at"))
+                        .build();
             }
-        } catch (SQLException e) {
-            System.out.println("Error getting customer by ID: " + customerId + " - " + e.getMessage());
+            return order;
+        }catch (SQLException sqlException) {
+            System.out.println(sqlException.getMessage());
         }
         return null;
     }

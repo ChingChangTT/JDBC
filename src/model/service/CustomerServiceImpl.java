@@ -1,74 +1,71 @@
 package model.service;
 
+import excaption.ExceptionHandling;
+import mapper.CustomerMapper;
 import model.dao.CustomerDao;
 import model.dao.CustomerDaoImpl;
 import model.dto.CustomerDto;
 import model.entity.Customer;
 
+
+
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class CustomerServiceImpl implements CustomerService {
-    private final CustomerDao customerDao;
-
-    public CustomerServiceImpl() {
-        this.customerDao = new CustomerDaoImpl();
+public class CustomerServiceImpl implements CustomerService{
+    private final CustomerDao customerDao = new CustomerDaoImpl();
+    @Override
+    public List<CustomerDto> queryAllCustomers() {
+        try {
+            List<Customer> customers = customerDao.queryAllCustomers();
+            if(!(customers.isEmpty())){
+                return customerDao.queryAllCustomers().stream().map(CustomerMapper::mapCustomerToCustomerDto).toList();
+            }else {
+                throw new ExceptionHandling("No Data !");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
+        return null;
     }
 
     @Override
-    public boolean addCustomer(CustomerDto customerDto) {
-        Customer customer = convertToEntity(customerDto);
-        return customerDao.addCustomer(customer) > 0;
+    public void addNewCustomer(Customer customer){
+        try{
+            if (customerDao.addNewCustomer(customer) > 0) {
+                throw new ExceptionHandling("Customer Added Successfully !");
+            }else{
+                throw new ExceptionHandling("Cant add customer");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
     }
 
     @Override
-    public boolean updateCustomer(CustomerDto customerDto) {
-        Customer customer = convertToEntity(customerDto);
-        return customerDao.updateCustomer(customer) > 0;
+    public void updateCustomerById(Integer id){
+        try {
+            if (customerDao.updateCustomerById(id) > 0) {
+                throw new ExceptionHandling("Customer Updated Successfully !");
+            }else {
+                throw new ExceptionHandling("Cant update customer");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
     }
 
     @Override
-    public boolean deleteCustomer(int customerId) {
-        customerDao.deleteCustomer(customerId);
-        return true;
+    public void deleteCustomerById(Integer id) {
+        try {
+            if (customerDao.deleteCustomerById(id) > 0) {
+                throw new ExceptionHandling("Customer Deleted Successfully !");
+            }else {
+                throw new ExceptionHandling("Cant delete customer");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
     }
 
-    @Override
-    public CustomerDto getCustomerById(int customerId) {
-        Customer customer = customerDao.getCustomerById(customerId);
-        return convertToDto(customer);
-    }
 
-    @Override
-    public List<CustomerDto> getAllCustomers() {
-        List<Customer> customers = customerDao.getAllCustomers();
-        return customers.stream().map(this::convertToDto).collect(Collectors.toList());
-    }
-
-    @Override
-    public void clearAllCustomers() {
-        customerDao.clearAllCustomers();
-    }
-
-    private Customer convertToEntity(CustomerDto customerDto) {
-        return Customer.builder()
-                .id(customerDto.getId())
-                .name(customerDto.getName())
-                .email(customerDto.getEmail())
-                .password(customerDto.getPassword())
-                .isDeleted(customerDto.getIsDeleted())
-                .CreateDate(customerDto.getCreateDate())
-                .build();
-    }
-
-    private CustomerDto convertToDto(Customer customer) {
-        return CustomerDto.builder()
-                .id(customer.getId())
-                .name(customer.getName())
-                .email(customer.getEmail())
-                .password(customer.getPassword())
-                .isDeleted(customer.getIsDeleted())
-                .createDate(customer.getCreateDate())
-                .build();
-    }
 }

@@ -2,13 +2,15 @@ package model.dao;
 
 import model.entity.Customer;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 
 public interface CustomerDao {
-    int addCustomer(Customer customer);
-    int updateCustomer(Customer customer);
-    void deleteCustomer(int customerId);
-    Customer getCustomerById(int customerId);
-    List<Customer> getAllCustomers();
-    void clearAllCustomers();
+    List<Customer> queryAllCustomers();
+    int deleteCustomerById(Integer id);
+    int updateCustomerById(Integer id);
+    int addNewCustomer(Customer customer);
+    Connection connectionToDataBase() throws SQLException;
+    Customer searchCustomerById(Integer id);
 }

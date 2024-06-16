@@ -1,14 +1,15 @@
 package model.service;
 
+import excaption.ExceptionHandling;
+
 import model.dto.ProductDto;
+import model.entity.Product;
 
 import java.util.List;
 
 public interface ProductService {
-    boolean addProduct(ProductDto productDto);
-    boolean updateProduct(ProductDto productDto);
-    boolean deleteProduct(int productId);
-    ProductDto getProductById(int productId);
-    List<ProductDto> getAllProducts();
-    void clearAllProducts();
+    List<ProductDto> queryAllProducts() throws ExceptionHandling;
+    void addNewProduct(Product product) throws ExceptionHandling;
+    void updateProductById(Integer id) throws ExceptionHandling;
+    void deleteProductById(Integer id);
 }

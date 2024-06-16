@@ -1,72 +1,67 @@
 package model.service;
 
+import excaption.ExceptionHandling;
+import mapper.OrderMapper;
 import model.dao.OrderDao;
 import model.dao.OrderDaoImpl;
 import model.dto.OrderDto;
 import model.entity.Order;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class OrderServiceImpl implements OrderService {
-    private final OrderDao orderDao;
-
-    public OrderServiceImpl() {
-        this.orderDao = new OrderDaoImpl();
+public class OrderServiceImpl implements OrderService{
+    private final OrderDao orderDao = new OrderDaoImpl();
+    @Override
+    public List<OrderDto> queryAllOrders(){
+        try {
+            List<Order> orders = orderDao.queryAllOrders();
+            if(!(orders.isEmpty())){
+                return orderDao.queryAllOrders().stream().map(OrderMapper::mapOrderToOrderDto).toList();
+            }else {
+                throw new ExceptionHandling("No Data !");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
+        return null;
     }
 
     @Override
-    public boolean addOrder(OrderDto orderDto) {
-        Order order = convertToEntity(orderDto);
-        return orderDao.addOrder(order) > 0;
+    public void addNewOrder(Order order){
+        try{
+            if (orderDao.addNewOrder(order) > 0) {
+                throw new ExceptionHandling("Order Added Successfully !");
+            }else{
+                throw new ExceptionHandling("Cant add order");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
     }
 
     @Override
-    public boolean updateOrder(OrderDto orderDto) {
-        Order order = convertToEntity(orderDto);
-        return orderDao.updateOrder(order) > 0;
+    public void updateOrderById(Integer id) {
+        try {
+            if(orderDao.updateOrder(id)>0) {
+                throw new ExceptionHandling("Order Updated Successfully !");
+            }else {
+                throw new ExceptionHandling("Cant update order");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
     }
 
     @Override
-    public boolean deleteOrder(int orderId) {
-        orderDao.deleteOrder(orderId);
-        return true;
-    }
-
-    @Override
-    public OrderDto getOrderById(int orderId) {
-        Order order = orderDao.getOrderById(orderId);
-        return convertToDto(order);
-    }
-
-    @Override
-    public List<OrderDto> getAllOrders() {
-        List<Order> orders = orderDao.getAllOrders();
-        return orders.stream().map(this::convertToDto).collect(Collectors.toList());
-    }
-
-    @Override
-    public void clearAllOrders() {
-        orderDao.clearAllOrders();
-    }
-
-    private Order convertToEntity(OrderDto orderDto) {
-        return Order.builder()
-                .id(orderDto.getId())
-                .order_name(orderDto.getOrder_name())
-                .orderDescription(orderDto.getOrderDescription())
-                .orderdAt(orderDto.getOrderdAt())
-                .customer(orderDto.getCustomer())
-                .build();
-    }
-
-    private OrderDto convertToDto(Order order) {
-        return OrderDto.builder()
-                .id(order.getId())
-                .order_name(order.getOrder_name())
-                .orderDescription(order.getOrderDescription())
-                .orderdAt(order.getOrderdAt())
-                .customer(order.getCustomer())
-                .build();
+    public void deleteOrderById(Integer id) {
+        try {
+            if(orderDao.deleteOrderById(id)>0) {
+                throw new ExceptionHandling("Order Deleted Successfully !");
+            }else {
+                throw new ExceptionHandling("Cant delete order");
+            }
+        }catch (ExceptionHandling e){
+            System.out.println(e.getMessage());
+        }
     }
 }

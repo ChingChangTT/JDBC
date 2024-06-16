@@ -1,14 +1,18 @@
 package model.service;
 
 import model.dto.OrderDto;
+import model.entity.Order;
 
 import java.util.List;
 
 public interface OrderService {
-    boolean addOrder(OrderDto orderDto);
-    boolean updateOrder(OrderDto orderDto);
-    boolean deleteOrder(int orderId);
-    OrderDto getOrderById(int orderId);
-    List<OrderDto> getAllOrders();
-    void clearAllOrders();
+
+
+    List<OrderDto> queryAllOrders();
+
+    void addNewOrder(Order order);
+
+    void updateOrderById(Integer id);
+
+    void deleteOrderById(Integer id);
 }

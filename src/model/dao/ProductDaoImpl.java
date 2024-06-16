@@ -5,152 +5,144 @@ import model.entity.Product;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.Scanner;
 
 public class ProductDaoImpl implements ProductDao {
-    private static final String URL = "jdbc:postgresql://localhost:5432/postgres";
-    private static final String USER = "postgres";
-    private static final String PASSWORD = "keoratana13$";
 
-    private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
-    }
+    private final CustomerDao customerDao = new CustomerDaoImpl();
 
     @Override
-    public int addProduct(Product product) {
-        String sql = "INSERT INTO product (product_name, product_code, product_description, imported_at, expired_at, is_deleted) VALUES (?,?,?,?,?,?)";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-            // Generate a random product code
-            String productCode = generateRandomProductCode(8); // Adjust length as needed
-
-            ps.setString(1, product.getProductName());
-            ps.setString(2, productCode); // Use the generated product code
-            ps.setString(3, product.getProductDescription());
-            ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
-            ps.setTimestamp(5, new Timestamp(System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)); // 30 days
-            ps.setBoolean(6, false);
-
-            int rowsInserted = ps.executeUpdate();
-
-            if (rowsInserted > 0) {
-                try (ResultSet rs = ps.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        product.setId(rs.getInt(1));
-                    }
-                }
-            }
-
-            return rowsInserted;
-        } catch (SQLException e) {
-            System.out.println("Error adding product: " + e.getMessage());
-            return -1;
-        }
-    }
-
-    // Method to generate a random product code
-    private String generateRandomProductCode(int length) {
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        StringBuilder sb = new StringBuilder(length);
-        Random random = new Random();
-        for (int i = 0; i < length; i++) {
-            sb.append(characters.charAt(random.nextInt(characters.length())));
-        }
-        return sb.toString();
-    }
-
-    @Override
-    public int updateProduct(Product product) {
-        String sql = "UPDATE product SET product_name=?, product_code=?, product_description=?, imported_at=?, expired_at=?, is_deleted=? WHERE id=?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-
-            ps.setString(1, product.getProductName());
-            ps.setString(2, product.getProductCode()); // Assuming product code can be updated
-            ps.setString(3, product.getProductDescription());
-            ps.setTimestamp(4, new Timestamp(product.getImportedDate().getTime()));
-            ps.setTimestamp(5, new Timestamp(product.getExpireDate().getTime()));
-            ps.setBoolean(6, product.isDeleted());
-            ps.setInt(7, product.getId());
-
-            return ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error updating product: " + e.getMessage());
-            return -1;
-        }
-    }
-
-    @Override
-    public void deleteProduct(int productId) {
-        String sql = "DELETE FROM product WHERE id=?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, productId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error deleting product: " + e.getMessage());
-        }
-    }
-
-    @Override
-    public Product getProductById(int productId) {
-        String sql = "SELECT * FROM product WHERE id=?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, productId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return new Product(
-                            rs.getInt("id"),
-                            rs.getString("product_name"),
-                            rs.getString("product_code"),
-                            rs.getBoolean("is_deleted"),
-                            rs.getTimestamp("imported_at"),
-                            rs.getTimestamp("expired_at"),
-                            rs.getString("product_description")
-                    );
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("Error getting product by id: " + e.getMessage());
-        }
-        return null;
-    }
-
-    @Override
-    public List<Product> getAllProducts() {
-        List<Product> products = new ArrayList<>();
-        String sql = "SELECT * FROM product";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
+    public List<Product> queryAllProducts() {
+        String sql = """
+                SELECT * FROM "product"
+                """;
+        try(
+                Connection conn = customerDao.connectionToDataBase();
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql);
+        ){
+            List<Product> productList = new ArrayList<>();
             while (rs.next()) {
-                products.add(new Product(
+                productList.add(new Product(
                         rs.getInt("id"),
                         rs.getString("product_name"),
                         rs.getString("product_code"),
                         rs.getBoolean("is_deleted"),
-                        rs.getTimestamp("imported_at"),
-                        rs.getTimestamp("expired_at"),
+                        rs.getDate("imported_at"),
+                        rs.getDate("expired_at"),
                         rs.getString("product_description")
                 ));
             }
-        } catch (SQLException e) {
-            System.out.println("Error getting all products: " + e.getMessage());
+            return productList;
+        }catch (SQLException e){
+            System.out.println(e.getMessage());
         }
-        return products;
+        return new ArrayList<>();
     }
 
     @Override
-    public void clearAllProducts() {
-        String sql = "DELETE FROM product";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error clearing all products: " + e.getMessage());
+    public int addNewProduct(Product product) {
+        String sql = """
+                INSERT INTO product (id, product_name, product_code, is_deleted, imported_at, expired_at, product_description)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """;
+        try(
+                Connection conn = customerDao.connectionToDataBase();
+                PreparedStatement pre = conn.prepareStatement(sql);
+                ){
+            pre.setInt(1, product.getId());
+            pre.setString(2, product.getProductName());
+            pre.setString(3, product.getProdcutCode());
+            pre.setBoolean(4, product.getIsDeleted());
+            pre.setDate(5, product.getImportedDate());
+            pre.setDate(6, product.getExpiredDate());
+            pre.setString(7, product.getProductDescription());
+            return pre.executeUpdate();
+        }catch (SQLException e) {
+            System.out.println(e.getMessage());
         }
+        return 0;
+    }
+
+    @Override
+    public int updateProduct(Integer id) {
+        String sql = """
+                UPDATE "product" 
+                SET product_name=?, product_code=?, product_description=?
+                WHERE id=?
+                """;
+        try(
+                Connection conn = customerDao.connectionToDataBase();
+                PreparedStatement pre = conn.prepareStatement(sql);
+                ){
+            Product product = searchProductById(id);
+            if(product != null){
+                System.out.print("Enter new product name: ");
+                pre.setString(1, new Scanner(System.in).nextLine());
+                System.out.print("Enter new product code: ");
+                pre.setString(2, new Scanner(System.in).nextLine());
+                System.out.print("Enter new description: ");
+                pre.setString(3, new Scanner(System.in).nextLine());
+                pre.setInt(4, id);
+                return pre.executeUpdate();
+            }
+            else{
+                System.out.println("Product not found");
+            }
+        }catch(SQLException e){
+            System.out.println(e.getMessage());
+        }
+        return 0;
+    }
+
+    @Override
+    public int deleteProduct(Integer id) {
+        String sql = """
+                DELETE FROM "product" WHERE id=?
+                """;
+        try(
+                Connection conn = customerDao.connectionToDataBase();
+                PreparedStatement pre = conn.prepareStatement(sql);
+                ){
+            pre.setInt(1, id);
+            int rowAffected = pre.executeUpdate();
+            String message = rowAffected > 0 ? "Product deleted successfully" : "Failed to delete product with id ";
+            System.out.println(message);
+            return rowAffected;
+        }catch(SQLException e){
+            System.out.println(e.getMessage());
+        }
+        return 0;
+    }
+
+    @Override
+    public Product searchProductById(Integer id) {
+        String sql = """
+                SELECT * FROM "product" WHERE id = ?
+                """;
+        try(
+                Connection conn = customerDao.connectionToDataBase();
+                PreparedStatement pre = conn.prepareStatement(sql);
+                ){
+            pre.setInt(1, id);
+            ResultSet rs = pre.executeQuery();
+            Product product = new Product();
+
+            while (rs.next()) {
+                product = Product.builder()
+                                .id(rs.getInt("id"))
+                                .productName(rs.getString("product_name"))
+                                .productName(rs.getString("product_code"))
+                                .isDeleted(rs.getBoolean("is_deleted"))
+                                .importedDate(rs.getDate("imported_at"))
+                                .expiredDate(rs.getDate("expired_at"))
+                                .productDescription(rs.getString("product_description"))
+                        .build();
+            }
+            return product;
+        }catch (SQLException e){
+            System.out.println(e.getMessage());
+        }
+        return null;
     }
 }
