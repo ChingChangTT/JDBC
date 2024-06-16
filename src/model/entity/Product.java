@@ -18,4 +18,5 @@ public class Product {
     private Date importedDate;
     private Date expireDate;
     private  String productDescription;
+
 }

@@ -11,98 +11,127 @@ public class CustomerDaoImpl implements CustomerDao {
     private static final String USER = "postgres";
     private static final String PASSWORD = "keoratana13$";
 
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+
     @Override
-    public List<Customer> queryAllCustomers() {
-        List<Customer> customers = new ArrayList<>();
-        String sql = "SELECT id, name, email, password, is_deleted, created_date FROM customer";
-        try (
-                Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
-                Statement statement = connection.createStatement();
-                ResultSet resultSet = statement.executeQuery(sql)
-        ) {
-            while (resultSet.next()) {
-                Customer customer = new Customer();
-                customer.setId(resultSet.getInt("id"));
-                customer.setName(resultSet.getString("name"));
-                customer.setEmail(resultSet.getString("email"));
-                customer.setPassword(resultSet.getString("password"));
-                customer.setIsDeleted(resultSet.getBoolean("is_deleted"));
-                customer.setCreateDate(resultSet.getDate("created_date"));
-                customers.add(customer);
+    public int addCustomer(Customer customer) {
+        String sql = "INSERT INTO customers (name, email, password, is_deleted, create_date) VALUES (?, ?, ?, ?, ?)";
+        try (Connection connection = getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            ps.setString(1, customer.getName());
+            ps.setString(2, customer.getEmail());
+            ps.setString(3, customer.getPassword());
+            ps.setBoolean(4, customer.getIsDeleted());
+            ps.setTimestamp(5, new Timestamp(customer.getCreateDate().getTime()));
+
+            int rowsInserted = ps.executeUpdate();
+
+            if (rowsInserted > 0) {
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        customer.setId(rs.getInt(1));
+                    }
+                }
             }
-        } catch (SQLException sqlException) {
-            System.out.println(sqlException.getMessage());
+
+            return rowsInserted;
+        } catch (SQLException e) {
+            System.out.println("Error adding customer: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    @Override
+    public int updateCustomer(Customer customer) {
+        String sql = "UPDATE customers SET name = ?, email = ?, password = ?, is_deleted = ?, create_date = ? WHERE id = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setString(1, customer.getName());
+            ps.setString(2, customer.getEmail());
+            ps.setString(3, customer.getPassword());
+            ps.setBoolean(4, customer.getIsDeleted());
+            ps.setTimestamp(5, new Timestamp(customer.getCreateDate().getTime()));
+            ps.setInt(6, customer.getId());
+
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error updating customer: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    @Override
+    public void deleteCustomer(int customerId) {
+        String sql = "DELETE FROM customers WHERE id = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, customerId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error deleting customer: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public Customer getCustomerById(int customerId) {
+        String sql = "SELECT * FROM customers WHERE id = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, customerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new Customer(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("email"),
+                            rs.getString("password"),
+                            rs.getBoolean("is_deleted"),
+                            rs.getTimestamp("create_date")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error getting customer by id: " + e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public List<Customer> getAllCustomers() {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT * FROM customers";
+        try (Connection connection = getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                customers.add(new Customer(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("email"),
+                        rs.getString("password"),
+                        rs.getBoolean("is_deleted"),
+                        rs.getTimestamp("create_date")
+                ));
+            }
+        } catch (SQLException e) {
+            System.out.println("Error getting all customers: " + e.getMessage());
         }
         return customers;
     }
 
     @Override
-    public int deleteCustomerById(Integer id) {
-        String sql = "DELETE FROM customer WHERE id = ?";
-        try (
-                Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)
-        ) {
-            preparedStatement.setInt(1, id);
-            return preparedStatement.executeUpdate();
-        } catch (SQLException sqlException) {
-            System.out.println(sqlException.getMessage());
+    public void clearAllCustomers() {
+        String sql = "DELETE FROM customers";
+        try (Connection connection = getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error clearing all customers: " + e.getMessage());
         }
-        return 0;
-    }
-
-    @Override
-    public int updateCustomerById(Integer id) {
-        return 0;
-    }
-
-    @Override
-    public int updateCustomerById(Integer id, Customer customer) {  // Added a customer parameter
-        String sql = """
-                UPDATE customer
-                SET name = ?, email = ?, password = ?, is_deleted = ?, created_date = ?
-                WHERE id = ?
-                """;
-        try (
-                Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)
-        ) {
-            preparedStatement.setString(1, customer.getName());
-            preparedStatement.setString(2, customer.getEmail());
-            preparedStatement.setString(3, customer.getPassword());
-            preparedStatement.setBoolean(4, customer.getIsDeleted());
-            preparedStatement.setDate(5, (Date) customer.getCreateDate());
-            preparedStatement.setInt(6, id);
-            return preparedStatement.executeUpdate();
-        } catch (SQLException sqlException) {
-            System.out.println(sqlException.getMessage());
-        }
-        return 0;
-    }
-
-    @Override
-    public int addNewCustomer(Customer customer) {
-        String sql = """
-                INSERT INTO customer (name, email, password, is_deleted, created_date)
-                VALUES (?, ?, ?, ?, ?)
-                """;
-        try (
-                Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)
-        ) {
-            preparedStatement.setString(1, customer.getName());
-            preparedStatement.setString(2, customer.getEmail());
-            preparedStatement.setString(3, customer.getPassword());
-            preparedStatement.setBoolean(4, customer.getIsDeleted());
-            preparedStatement.setDate(5, (Date) customer.getCreateDate());
-            int rowAffected = preparedStatement.executeUpdate();
-            if (rowAffected > 0) {
-                System.out.println("Insert success.");
-                return rowAffected;
-            }
-        } catch (SQLException sqlException) {
-            System.out.println(sqlException.getMessage());
-        }
-        return 0;
     }
 }

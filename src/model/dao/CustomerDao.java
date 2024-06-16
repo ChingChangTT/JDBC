@@ -5,11 +5,10 @@ import model.entity.Customer;
 import java.util.List;
 
 public interface CustomerDao {
-    List<Customer> queryAllCustomers();
-    int deleteCustomerById(Integer id);
-    int updateCustomerById(Integer id);
-
-    int updateCustomerById(Integer id, Customer customer);
-
-    int addNewCustomer(Customer customer);
+    int addCustomer(Customer customer);
+    int updateCustomer(Customer customer);
+    void deleteCustomer(int customerId);
+    Customer getCustomerById(int customerId);
+    List<Customer> getAllCustomers();
+    void clearAllCustomers();
 }
